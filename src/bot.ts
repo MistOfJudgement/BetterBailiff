@@ -1,7 +1,16 @@
-import {ChatInputCommandInteraction, Client, ClientOptions, Collection, Events, GatewayIntentBits} from "discord.js";
+import {
+    ChatInputCommandInteraction,
+    Client,
+    ClientEvents,
+    ClientOptions,
+    Collection,
+    Events,
+    GatewayIntentBits
+} from "discord.js";
 import {DISCORD_TOKEN} from "../config";
 import {SlashCommand} from "./SlashCommand";
-import {ClocktowerSetup} from "./commands/clocktower";
+import {ClocktowerEvents, ClocktowerSetup, ClocktowerStart} from "./commands/clocktower";
+import * as events from "events";
 
 export class BailiffBot extends Client {
     commands: Collection<string, SlashCommand> = new Collection<string, SlashCommand>();
@@ -25,6 +34,7 @@ const client = new BailiffBot(<ClientOptions>{
 });
 
 client.addCommand(ClocktowerSetup)
+client.addCommand(ClocktowerStart)
 client.on(Events.InteractionCreate, async interaction => {
     if(!interaction.isChatInputCommand()) return;
     interaction = interaction as ChatInputCommandInteraction;
@@ -52,7 +62,10 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 })
-
+const handlers = ClocktowerEvents;
+for(const event in handlers) {
+    client.on(event as keyof ClientEvents, handlers[event] as (...args: any[]) => void);
+}
 client.on(Events.ClientReady, (readyClient)=> {
     console.log(`Logged in as ${readyClient.user?.tag}`);
 });
