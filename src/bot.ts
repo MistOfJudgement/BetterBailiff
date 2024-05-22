@@ -1,9 +1,16 @@
-import {Client, ClientOptions, Events, GatewayIntentBits} from "discord.js";
+import {ChatInputCommandInteraction, Client, ClientOptions, Collection, Events, GatewayIntentBits} from "discord.js";
 import {DISCORD_TOKEN} from "../config";
+import {SlashCommand} from "./SlashCommand";
+import {ClocktowerSetup} from "./commands/clocktower";
 
 export class BailiffBot extends Client {
+    commands: Collection<string, SlashCommand> = new Collection<string, SlashCommand>();
     constructor(options: ClientOptions) {
         super(options);
+    }
+
+    addCommand(command: SlashCommand) {
+        this.commands.set(command.data.name, command);
     }
 }
 
@@ -17,9 +24,42 @@ const client = new BailiffBot(<ClientOptions>{
     ]
 });
 
+client.addCommand(ClocktowerSetup)
+client.on(Events.InteractionCreate, async interaction => {
+    if(!interaction.isChatInputCommand()) return;
+    interaction = interaction as ChatInputCommandInteraction;
+    console.log(`Received command ${interaction.commandName}`);
+    const command = client.commands.get(interaction.commandName);
+    if(!command) {
+        console.error(`Command ${interaction.commandName} not found`);
+        return;
+    }
+    try {
+        console.log(`Executing command ${interaction.commandName}`);
+        await command.execute(interaction);
+    } catch (error) {
+        console.error(error);
+        if (interaction.deferred || interaction.replied) {
+            await interaction.followUp({
+                content: 'There was an error while executing this command!',
+                ephemeral: true
+            });
+        } else {
+            await interaction.reply({
+                content: 'There was an error while executing this command!',
+                ephemeral: true
+            });
+        }
+    }
+})
+
 client.on(Events.ClientReady, (readyClient)=> {
     console.log(`Logged in as ${readyClient.user?.tag}`);
 });
+
+client.on(Events.InteractionCreate, async interaction => {
+
+})
 
 process.on('SIGINT', async function() {
     console.log("Caught interrupt signal");
