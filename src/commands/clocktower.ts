@@ -9,7 +9,7 @@ import {
     RepliableInteraction,
     Snowflake
 } from "discord.js";
-import {SlashCommand} from "../SlashCommand";
+import {EventExecutor, EventHandler, SlashCommand} from "../SlashCommand";
 
 interface ClocktowerSession {
     guildId: Snowflake
@@ -118,9 +118,7 @@ function isRelevantPollEvent(pollAnswer: PollAnswer, userID: Snowflake) : boolea
     return true;
 }
 
-type EventHandler = {
-    [key: string] : (...args: any) => Promise<void>
-}
+const add : EventExecutor<Events.MessagePollVoteAdd> = async (pollAnswer: PollAnswer, userID: Snowflake)  => {}
 export const ClocktowerEvents : EventHandler = {
     [Events.MessagePollVoteAdd]: async (pollAnswer: PollAnswer, userID: Snowflake)  => {
         console.log(`Poll answer received from ${userID} in guild ${pollAnswer.poll.message.guildId}`);

@@ -64,7 +64,7 @@ client.on(Events.InteractionCreate, async interaction => {
 })
 const handlers = ClocktowerEvents;
 for(const event in handlers) {
-    client.on(event as keyof ClientEvents, handlers[event] as (...args: any[]) => void);
+    client.on(event, handlers[event as keyof ClientEvents]);
 }
 client.on(Events.ClientReady, (readyClient)=> {
     console.log(`Logged in as ${readyClient.user?.tag}`);
