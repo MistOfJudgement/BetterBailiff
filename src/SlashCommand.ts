@@ -15,3 +15,8 @@ export interface SlashCommand {
     data: any;
     execute: EventExecutor<Events.InteractionCreate>
 }
+
+export interface BaseContext {
+    commands: SlashCommand[];
+    events?: EventHandler;
+}
