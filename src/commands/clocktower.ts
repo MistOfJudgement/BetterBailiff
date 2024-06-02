@@ -10,7 +10,9 @@ import {
     Snowflake
 } from "discord.js";
 import {EventExecutor, EventHandler, GuildContext, SlashCommand} from "../SlashCommand";
+import { baseLogger, logMethodCalls } from "../logging";
 
+const logger = baseLogger.child({context: "Clocktower"});
 interface ClocktowerSession {
     guildId: Snowflake
     roleId?: Snowflake;
@@ -39,7 +41,7 @@ export const ClocktowerSetup: SlashCommand = {
                 .setRequired(true)
         )
         .setDMPermission(false),
-
+    
     execute: async (interaction) => {
         //i dont know how to type it to get the right methods exposed
         if(!interaction.isChatInputCommand()) return;
@@ -51,7 +53,7 @@ export const ClocktowerSetup: SlashCommand = {
         } else {
             sessions.get(guildId)!.roleId = roleId;
         }
-        console.log(`Clocktower role set to ${roleId} in guild ${guildId}`);
+        logger.info(`Clocktower role set to ${roleId} in guild ${guildId}`);
         await interaction.reply({
             content: `Clocktower role set to <@&${roleId}>`
         });
@@ -88,7 +90,7 @@ export const ClocktowerStart: SlashCommand = {
             poll: joinPollData
         }).then(poll => {
             session.poll = poll.poll;
-        }).catch(console.error)
+        }).catch(logger.error)
         await interaction.reply({
             content: "Clocktower game started",
             ephemeral: true
@@ -96,7 +98,7 @@ export const ClocktowerStart: SlashCommand = {
     }
 }
 function isRelevantPollEvent(pollAnswer: PollAnswer, userID: Snowflake) : boolean {
-    console.log(JSON.stringify({
+    logger.info(JSON.stringify({
         guildId: pollAnswer.poll.message.guildId,
         pollId: pollAnswer.poll.message.id,
         userId: userID,
@@ -110,14 +112,15 @@ function isRelevantPollEvent(pollAnswer: PollAnswer, userID: Snowflake) : boolea
 
     if(pollAnswer.poll.message.id !== session.poll?.message.id) return false;
     const user = pollAnswer.poll.message.guild.members.cache.get(userID) as GuildMember;
-    console.log(`User ${user.id} found in guild ${guildId}`)
+    logger.info(`User ${user.id} found in guild ${guildId}`)
     if (!user) {
-        console.error(`User ${userID} not found in guild ${guildId}`);
+        logger.error(`User ${userID} not found in guild ${guildId}`);
         return false;
     }
     return true;
 }
 export const ClocktowerContext: GuildContext<ClocktowerSession> = {
+    name: "Clocktower",
     guilds: sessions,
     commands: new Collection<string, SlashCommand>([
         [ClocktowerSetup.data.name, ClocktowerSetup],
@@ -125,24 +128,24 @@ export const ClocktowerContext: GuildContext<ClocktowerSession> = {
     ]),
     events: new EventHandler({
         [Events.MessagePollVoteAdd]: async (pollAnswer: PollAnswer, userID: Snowflake)  => {
-            console.log(`Poll answer received from ${userID} in guild ${pollAnswer.poll.message.guildId}`);
+            logger.info(`Poll answer received from ${userID} in guild ${pollAnswer.poll.message.guildId}`);
             if (!isRelevantPollEvent(pollAnswer, userID)) return;
-            console.log(`Relevant answer received from ${userID} in guild ${pollAnswer.poll.message.guildId}`)
+            logger.info(`Relevant answer received from ${userID} in guild ${pollAnswer.poll.message.guildId}`)
             const guildId = pollAnswer.poll.message.guildId;
             const session = sessions.get(guildId)!;
             const user = pollAnswer.poll.message.guild.members.cache.get(userID) as GuildMember;
             await user.roles.add(session.roleId!)
-            console.log(`User ${userID} joined Clocktower game in guild ${guildId}`);
+            logger.info(`User ${userID} joined Clocktower game in guild ${guildId}`);
             session.players.push(userID);
         },
         [Events.MessagePollVoteRemove]: async (pollAnswer: PollAnswer, userID: Snowflake)  => {
-            console.log(`Poll answer removed from ${userID} in guild ${pollAnswer.poll.message.guildId}`);
+            logger.info(`Poll answer removed from ${userID} in guild ${pollAnswer.poll.message.guildId}`);
             if (!isRelevantPollEvent(pollAnswer, userID)) return;
             const guildId = pollAnswer.poll.message.guildId;
             const session = sessions.get(guildId)!;
             const user = pollAnswer.poll.message.guild.members.cache.get(userID) as GuildMember;
             await user.roles.remove(session.roleId!)
-            console.log(`User ${userID} left Clocktower game in guild ${guildId}`);
+            logger.info(`User ${userID} left Clocktower game in guild ${guildId}`);
             session.players = session.players.filter(player => player !== userID);
         }
     })

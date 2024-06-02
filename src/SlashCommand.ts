@@ -31,6 +31,7 @@ export interface SlashCommand {
 }
 
 export interface GuildContext<ContextData>{
+    name: string;
     guilds: Collection<Snowflake, ContextData>;
     commands: Collection<string, SlashCommand>;
     events: EventHandler;
