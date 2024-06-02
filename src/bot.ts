@@ -1,4 +1,5 @@
 import {
+    BaseInteraction,
     ChatInputCommandInteraction,
     Client,
     ClientEvents,
@@ -35,6 +36,23 @@ export class BailiffBot extends Client {
                 }
             });
         }
+    }
+    setupCommands() {
+        this.on(Events.InteractionCreate, async (interaction : BaseInteraction) => {
+            if (!interaction.isCommand()) return;
+            for (const context of this.contexts) {
+                const command = context.commands.get(interaction.commandName);
+                if (command) {
+                    await command.execute(interaction);
+                }
+            }
+        });
+    }
+
+    async login(token?: string) {
+        this.setupEvents();
+        this.setupCommands();
+        return super.login(token);
     }
 }
 
