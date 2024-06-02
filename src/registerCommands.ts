@@ -1,11 +1,10 @@
-import {ClocktowerSetup, ClocktowerStart} from "./commands/clocktower";
+import {ClocktowerContext, ClocktowerSetup, ClocktowerStart} from "./commands/clocktower";
 import {REST, Routes} from "discord.js";
 import {ALPHA_SERVERS, CLIENT_ID, DISCORD_TOKEN} from "../config";
 import {SlashCommand} from "./SlashCommand";
 
 const commands = [
-    ClocktowerSetup,
-    ClocktowerStart
+    ...ClocktowerContext.commands.values(),
 ];
 
 //TODO auto generate commands to deploy

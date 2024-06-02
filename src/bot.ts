@@ -1,4 +1,5 @@
 import {
+    BaseInteraction,
     ChatInputCommandInteraction,
     Client,
     ClientEvents,
@@ -8,18 +9,50 @@ import {
     GatewayIntentBits
 } from "discord.js";
 import {DISCORD_TOKEN} from "../config";
-import {SlashCommand} from "./SlashCommand";
-import {ClocktowerEvents, ClocktowerSetup, ClocktowerStart} from "./commands/clocktower";
+import {GuildContext, SlashCommand, SupportedEvents} from "./SlashCommand";
+import {ClocktowerContext, ClocktowerSetup, ClocktowerStart} from "./commands/clocktower";
 import * as events from "events";
 
 export class BailiffBot extends Client {
-    commands: Collection<string, SlashCommand> = new Collection<string, SlashCommand>();
+    contexts: GuildContext<any>[] = [ClocktowerContext]
     constructor(options: ClientOptions) {
         super(options);
     }
 
-    addCommand(command: SlashCommand) {
-        this.commands.set(command.data.name, command);
+    setupEvents() {
+        const eventsToRegister: SupportedEvents[] = [];
+        for (const context of this.contexts) {
+            for (const [event, _executor] of context.events) {
+                eventsToRegister.push(event);
+            }
+        }
+        for (const event of eventsToRegister) {
+            this.on(event, (...args) => {
+                for (const context of this.contexts) {
+                    const executor = context.events.get(event);
+                    if (executor) {
+                        void executor(...args);
+                    }
+                }
+            });
+        }
+    }
+    setupCommands() {
+        this.on(Events.InteractionCreate, async (interaction : BaseInteraction) => {
+            if (!interaction.isCommand()) return;
+            for (const context of this.contexts) {
+                const command = context.commands.get(interaction.commandName);
+                if (command) {
+                    await command.execute(interaction);
+                }
+            }
+        });
+    }
+
+    async login(token?: string) {
+        this.setupEvents();
+        this.setupCommands();
+        return super.login(token);
     }
 }
 
@@ -33,46 +66,11 @@ const client = new BailiffBot(<ClientOptions>{
     ]
 });
 
-client.addCommand(ClocktowerSetup)
-client.addCommand(ClocktowerStart)
-client.on(Events.InteractionCreate, async interaction => {
-    if(!interaction.isChatInputCommand()) return;
-    interaction = interaction as ChatInputCommandInteraction;
-    console.log(`Received command ${interaction.commandName}`);
-    const command = client.commands.get(interaction.commandName);
-    if(!command) {
-        console.error(`Command ${interaction.commandName} not found`);
-        return;
-    }
-    try {
-        console.log(`Executing command ${interaction.commandName}`);
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(error);
-        if (interaction.deferred || interaction.replied) {
-            await interaction.followUp({
-                content: 'There was an error while executing this command!',
-                ephemeral: true
-            });
-        } else {
-            await interaction.reply({
-                content: 'There was an error while executing this command!',
-                ephemeral: true
-            });
-        }
-    }
-})
-const handlers = ClocktowerEvents;
-for(const event in handlers) {
-    client.on(event as keyof ClientEvents, handlers[event] as (...args: any[]) => void);
-}
+
 client.on(Events.ClientReady, (readyClient)=> {
     console.log(`Logged in as ${readyClient.user?.tag}`);
 });
 
-client.on(Events.InteractionCreate, async interaction => {
-
-})
 
 process.on('SIGINT', async function() {
     console.log("Caught interrupt signal");
@@ -81,4 +79,4 @@ process.on('SIGINT', async function() {
     process.exit();
 });
 
-client.login(DISCORD_TOKEN);
+void client.login(DISCORD_TOKEN);
